@@ -86,15 +86,15 @@ Para realizar a automação da criação e destruição das máquinas virtuais f
 
 Após a verificação dessa resposta, o script cria um arquivo que vai servir de consulta para o terraform sincronizar a criação de máquinas virtuais no proxmox.
 
-O repositório para esse script é o seguinte: https://github.com/pilati06/vm-scheduler
+O repositório para esse script é o seguinte: [https://github.com/pilati06/vm-scheduler](https://github.com/pilati06/vm-scheduler)
 
 No final do script o terraforma é executado para criar/destriuir automaticamente as vms.
 
 ## Terraform
 
-O terraform precisa ser instalado na máquina Core: https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli
+O terraform precisa ser instalado na máquina Core: [https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
 
-O repositório do terraform é o seguinte: https://github.com/pilati06/terraform
+O repositório do terraform é o seguinte: [https://github.com/pilati06/terraform](https://github.com/pilati06/terraform)
 
 ## Cron Job
 
