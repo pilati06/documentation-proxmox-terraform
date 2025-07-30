@@ -2,15 +2,16 @@
 
 ## Instalação Proxmox
 
-
 Primeiro é preciso instalar proxmox através da iso, é só fazer o download no site oficial e instalar como qualquer outro sistema operacional.
 
 É preciso habilitar a virtualização na bios da máquina se não estiver habilitada já.
 
 Após a instalação do sistema operacional é preciso seguir os passos abaixo para criar uma máquina virtual padrão para os clones.
 
-instalar pacote:
+instalar pacote libguestfs-tools:
+
 `apt-get update`
+
 `apt install libguestfs-tools -y`
 
 Baixar img do OS cloud (ex.: ubuntu server cloud img) com wget.
@@ -88,13 +89,19 @@ Após a verificação dessa resposta, o script cria um arquivo que vai servir de
 
 O repositório para esse script é o seguinte: [https://github.com/pilati06/vm-scheduler](https://github.com/pilati06/vm-scheduler)
 
-No final do script o terraforma é executado para criar/destriuir automaticamente as vms.
+No final do script o terraforma é executado para criar/destruir automaticamente as vms.
 
 ## Terraform
 
 O terraform precisa ser instalado na máquina Core: [https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
 
 O repositório do terraform é o seguinte: [https://github.com/pilati06/terraform](https://github.com/pilati06/terraform)
+
+Para utilizar o terraform é aconselhavel gerar um token de api no proxmox, este tutorial define os passo para gerar: [https://www.youtube.com/watch?v=1kFBk0ePtxo](https://www.youtube.com/watch?v=1kFBk0ePtxo)
+
+As seguintes permissões devem ser habilitadas para o token:
+
+<img width="299" height="615" alt="Captura de tela 2025-07-23 171517" src="https://github.com/user-attachments/assets/0954dfaf-6f8f-4e9f-a0d4-cdaf21522001" />
 
 ## Cron Job
 
