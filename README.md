@@ -1,66 +1,202 @@
-# Documentação Provisionamento Automático Proxmox/Terraform
+# Lab Virtual - Automated VM Provisioning System
 
-## Instalação Proxmox
+Sistema automatizado para provisionamento de máquinas virtuais através de tickets de solicitação com aprovação e expiração automática.
 
-Primeiro é preciso instalar proxmox através da iso, é só fazer o download no site oficial e instalar como qualquer outro sistema operacional.
+## 📋 Visão Geral
 
-É preciso habilitar a virtualização na bios da máquina se não estiver habilitada já.
+O Lab Virtual é uma solução completa que permite aos usuários solicitarem recursos computacionais (CPU, RAM, espaço em disco e tempo de disponibilidade) através de um frontend web. Após aprovação, o sistema automaticamente provisiona máquinas virtuais usando Terraform e Proxmox.
 
-Após a instalação do sistema operacional é preciso seguir os passos abaixo para criar uma máquina virtual padrão para os clones.
+## 🏗️ Arquitetura
 
-instalar pacote libguestfs-tools:
+```
+Frontend → API (Oracle APEX) → Banco de Dados → VM Core (Scheduler) → Terraform → Proxmox VE
+```
 
-`apt-get update`
+### Componentes Principais
 
-`apt install libguestfs-tools -y`
+- **Frontend**: Interface web para solicitação de recursos
+- **API Backend**: Oracle APEX com autenticação Basic Auth
+- **VM Core**: Script scheduler que monitora tickets aprovados
+- **Terraform**: Automação de infraestrutura como código
+- **Proxmox VE**: Plataforma de virtualização
 
-Baixar img do OS cloud (ex.: ubuntu server cloud img) com wget.
+## 🚀 Workflow
 
-Instalar qemu-guest-agent na img com:
+1. **Solicitação**: Usuário cria ticket via formulário especificando recursos necessários
+2. **Aprovação**: Ticket é submetido para aprovação manual
+3. **Provisionamento**: Sistema cria VM automaticamente após aprovação
+4. **Notificação**: Usuário recebe credenciais de acesso via email
+5. **Expiração**: VM é removida automaticamente na data de expiração
 
-`virt-customize –add noble-server-cloudimg-amd64.img –install qemu-guest-agent`
+## 🛠️ Pré-requisitos
 
-É possível verificar informações do cpu (como cores) com o comando:
-`cat /proc/cpuinfo`
+### Sistema Base
+- Habilitar virtualização na BIOS da máquina
+- Download da ISO oficial do Proxmox VE
+- Instalação do Proxmox como sistema operacional base
 
-Criar máquina virtual template:
-`qm create 9001 --name ubuntu-2404-cloud-init --numa 0 --ostype l26 --cpu cputype=host --cores 2 --sockets 2 --memory 2048 --net0 virtio,bridge=vmbr0`
+### VirtualBox (para desenvolvimento)
+```bash
+# Habilitar virtualização aninhada
+./VBoxManage modifyvm Proxmox --nested-hw-virt on
+```
+> Configurar placa de rede em modo bridge para acesso via navegador
 
-Importar img para o storage:
-`qm importdisk 9001 /tmp/noble-server-cloudimg-amd64.img local-lvm`
+### Máquina Core (VM Scheduler)
 
-Colocar a VM para utilizar o storage:
-`qm set 9001 –scsihw virtio-scsi-pci –scsi0 local-lvm:9001:vm-9001-disk-0`
+É uma máquina virtual criada no proxmox. Essa VM Core serve de base para as automações. Os scripts de criação/destruição de vms e envio de emails estão rodando nessa vm.
 
-Configurar Cloud-init:
-`qm set 9001 –ide2 local-lvm:cloudinit`
+- Sistema Linux com acesso à API
+- Terraform instalado
+- Cron jobs configurados
+- Acesso SSH ao Proxmox
 
-Definir scsi0 como disco de boot:
-`qm set 9001 –boot c –bootdisk scsi0`
+### Proxmox VE
 
-Configurar socket:
-`qm set 9001 –serial0 socket –vga serial0`
+#### Instalação e Configuração
+```bash
+# Atualizar sistema e instalar dependências
+apt-get update
+apt install libguestfs-tools -y
 
-Habilitar guest agent:
-`qm set 9001 –agent enabled=1`
+# Download da imagem Ubuntu Cloud
+wget https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
 
-Aumentar tamanho do disco (Opcional):
-`qm disk resize 9001 scsi0 +4G`
+# Instalar qemu-guest-agent na imagem
+virt-customize --add noble-server-cloudimg-amd64.img --install qemu-guest-agent
+```
 
-converte para template
-`qm template 9001`
+#### Criação do Template
+```bash
+# Criar VM template
+qm create 9001 --name ubuntu-2404-cloud-init --numa 0 --ostype l26 --cpu cputype=host --cores 2 --sockets 2 --memory 2048 --net0 virtio,bridge=vmbr0
 
-### Se o proxmox for instalado no VirtualBox para testes, as seguintes configurações são necessárias:
+# Importar disco para storage
+qm importdisk 9001 /tmp/noble-server-cloudimg-amd64.img local-lvm
 
-Executar o código abaixo na pasta de instalação do virtualbox, isso habilita a virtualização aninhada:
-`./VBoxManage modifyvm Proxmox --nested-hw-virt on`
+# Configurar storage
+qm set 9001 --scsihw virtio-scsi-pci --scsi0 local-lvm:9001:vm-9001-disk-0
 
-para ligar a máquina, desativar virtualização no proxmox (em options) e setar cpu:
-`qm set 100 --cpu=kvm64`
+# Configurar Cloud-init
+qm set 9001 --ide2 local-lvm:cloudinit
 
-## Máquina virtual Core
+# Definir disco de boot
+qm set 9001 --boot c --bootdisk scsi0
 
-Para realizar a automação da criação e destruição das máquinas virtuais foi criado um script que verifica um endpoint onde a resposta é como no código abaixo:
+# Configurar console serial
+qm set 9001 --serial0 socket --vga serial0
+
+# Habilitar guest agent
+qm set 9001 --agent enabled=1
+
+# Expandir disco (opcional)
+qm disk resize 9001 scsi0 +4G
+
+#### Verificação do Sistema
+```bash
+# Verificar informações da CPU (cores disponíveis)
+cat /proc/cpuinfo
+
+# Para VMs em VirtualBox, configurar CPU
+qm set 100 --cpu=kvm64
+```
+
+### Terraform
+
+#### Instalação
+Seguir as instruções oficiais: https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli
+
+#### Configuração dos Templates
+
+Consultar o padrão no repositório - **Terraform Templates**: Configurações de infraestrutura ([pilati06/terraform](https://github.com/pilati06/terraform))
+
+Deve-se clonar esse repositório na máquina core.
+
+## 🔄 Scripts de Automação
+
+### VM Scheduler Script
+
+Consultar os scripts de automação no repositório:
+
+- **VM Scheduler**: Scripts de automação e scheduling ([pilati06/vm-scheduler](https://github.com/pilati06/vm-scheduler))
+
+Também deve ser clonado na máquina core.
+
+### Cron Jobs
+
+```bash
+# Editar crontab
+crontab -e
+
+# Verificar tickets aprovados a cada 5 minutos
+*/5 * * * * /root/vm-scheduler/generate-vm-info.sh 2>&1 | ts "%Y-%m-%d %H:%M:%S" >> /root/logs/$(date +%Y-%m-%d).log
+
+# Enviar emails com credenciais a cada 5 minutos
+*/5 * * * * /root/vm-scheduler/sendmails-vm.sh 2>&1 | ts "%H:%M:%S" >> /root/logs/$(date +%Y-%m-%d)-mail.log
+
+# Limpeza de logs antigos (diário às 2h)
+0 2 * * * find /root/logs -type f -mtime +90 -name "*.log" -exec rm -f {} \;
+```
+
+## 🐳 Integração com Docker
+
+### Cloud-Init para Docker
+```yaml
+#cloud-config
+package_update: true
+package_upgrade: true
+packages:
+  - docker.io
+  - docker-compose
+users:
+  - name: ubuntu
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+ssh_pwauth: true
+chpasswd:
+  list: |
+    ubuntu:${password}
+  expire: true
+runcmd:
+  - sed -i 's/^PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  - systemctl restart ssh
+  - systemctl enable docker
+  - systemctl start docker
+  - usermod -aG docker ubuntu
+```
+
+### Configuração de Usuários
+```yaml
+#cloud-config
+users:
+  - name: ubuntu
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+ssh_pwauth: true
+chpasswd:
+  list: |
+    ubuntu:${password}
+  expire: true
+runcmd:
+  - sed -i 's/^PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  - systemctl restart ssh
+```
+
+## 🔐 Configuração de SSH
+
+```bash
+# Gerar chaves SSH para Terraform
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_proxmox -C "terraform@proxmox"
+
+# Copiar chave pública para Proxmox
+ssh-copy-id -i ~/.ssh/id_rsa_proxmox.pub root@PROXMOX_IP
+```
+
+## 📊 Estrutura da API Response
+
+### Endpoint de Tickets Aprovados
+
+Exemplo de resposta:
 
 ```json
 {
@@ -81,36 +217,126 @@ Para realizar a automação da criação e destruição das máquinas virtuais f
       "memoria_calc": 1024,
       "docker": 0
     }
-  ],
+  ]
 }
 ```
 
-Após a verificação dessa resposta, o script cria um arquivo que vai servir de consulta para o terraform sincronizar a criação de máquinas virtuais no proxmox.
+### Campos da Response
+| Campo | Descrição | Tipo |
+|-------|-----------|------|
+| `id` | ID único do ticket | Integer |
+| `ano` | Ano de criação | Integer |
+| `memoria` | Memória solicitada (GB) | Integer |
+| `disco` | Espaço em disco (GB) | Integer |
+| `nucleos` | Número de CPUs | Integer |
+| `tempo_uso` | Tempo de uso (dias) | Integer |
+| `memoria_calc` | Memória calculada (MB) | Integer |
+| `docker` | Flag para suporte Docker | Integer (0/1) |
+| `dat_incl` | Data de criação | ISO DateTime |
+| `dat_fim` | Data de expiração | ISO DateTime |
 
-O repositório para esse script é o seguinte: [https://github.com/pilati06/vm-scheduler](https://github.com/pilati06/vm-scheduler)
+## 📊 API Endpoints
 
-No final do script o terraforma é executado para criar/destruir automaticamente as vms.
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/labvirtual/tasks/approved` | Buscar tickets aprovados |
+| POST | `https://apex.oracle.com/pls/apex/pilati/labvirtual/sendmail` | Atualizar status da VM |
 
-## Terraform
+Enviar post com o seguinte corpo:
 
-O terraform precisa ser instalado na máquina Core: [https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
+```json
+{ 
+  "vmname": "NOME_VM", 
+  "password": "PRIMEIRA_SENHA_SEGURA", 
+  "ipvm": "IP_MAQUINA", 
+  "user": "USER" 
+}
+```
 
-O repositório do terraform é o seguinte: [https://github.com/pilati06/terraform](https://github.com/pilati06/terraform)
+## 📁 Estrutura do Projeto
 
-Para utilizar o terraform é aconselhavel gerar um token de api no proxmox, este tutorial define os passo para gerar: [https://www.youtube.com/watch?v=1kFBk0ePtxo](https://www.youtube.com/watch?v=1kFBk0ePtxo)
+```
+lab-virtual/
+├── terraform/
+│   ├── main.tf
+│   ├── variables.tf
+│   └── terraform.tfvars
+│   └── cloudinit-config-files
+│       ├── cloudinit-docker.yaml.tmpl
+│       └── cloudinit.yaml.tmpl
+├── vm-scheduler/
+│   ├── generate-vm-info.sh
+│   └── sendmails-vm.sh
+├── logs/
+│   └── [Arquivos de log]
+```
 
-As seguintes permissões devem ser habilitadas para o token:
+## 🔗 Repositórios Relacionados
 
-<img width="299" height="615" alt="Captura de tela 2025-07-23 171517" src="https://github.com/user-attachments/assets/0954dfaf-6f8f-4e9f-a0d4-cdaf21522001" />
+Este projeto faz parte de um ecossistema maior com os seguintes repositórios:
 
-## Cron Job
+- **VM Scheduler**: Scripts de automação e scheduling ([pilati06/vm-scheduler](https://github.com/pilati06/vm-scheduler))
+- **Terraform Templates**: Configurações de infraestrutura ([pilati06/terraform](https://github.com/pilati06/terraform))
+- **Documentação Oficial**: [pilati06.github.io/documentation-proxmox-terraform](https://pilati06.github.io/documentation-proxmox-terraform/)
 
-Na máquina Core é preciso criar um cron job para executar o script bash.
-Execute: `crontab -e`
+### Providers Terraform Recomendados
 
-e em seguida adicione a linha:
+Para diferentes necessidades, considere os seguintes providers:
 
-`*/5 * * * * /root/vm-scheduler/generate-vm-info.sh 2>&1 | ts "%Y-%m-%d %H:%M:%S" >> /root/logs/$(date +%Y-%m-%d).log`
+- **Telmate/proxmox** (usado neste projeto): Provider estável e amplamente utilizado
+- **bpg/proxmox**: Provider mais moderno com recursos adicionais
+- **danitso/proxmox**: Alternativa com funcionalidades específicas
 
-Essa linha cria um scheduler que executa o script a cada 5 minutos, imprimindo o log de saída num arquivo com o nome da data atual, e com timestamp em cada linha. O comando `ts` é do pacote moreultils para imprimir tag de horário no log.
- 
+## 📈 Recursos Avançados
+
+### Monitoramento e Logs
+- Logs estruturados com timestamps
+- Limpeza automática de arquivos antigos
+- Monitoramento do status das VMs
+- Alertas por email sobre falhas
+
+### Escalabilidade
+- Suporte a múltiplas VMs simultâneas
+- Gerenciamento de recursos por quotas
+- Balanceamento de carga entre nós Proxmox
+
+### Integração
+- API RESTful completa
+- Webhooks para notificações
+- Integração com sistemas de ticketing
+
+### Dependências Necessárias
+```bash
+# HTTPie para requisições HTTP
+sudo apt install httpie
+
+# moreutils para timestamp nos logs
+sudo apt install moreutils
+
+# jq para parsing JSON
+sudo apt install jq
+```
+
+## ⚠️ Configurações de Segurança
+
+- Alterar credenciais padrão antes da produção
+- Configurar firewall adequadamente
+- Usar HTTPS em produção
+- Implementar rotação de tokens da API
+- Configurar backup regular dos dados
+
+## 📝 Logs
+
+Os logs são armazenados em `/root/logs/` com limpeza automática de arquivos com mais de 90 dias.
+
+## 🤝 Contribuição
+
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
+3. Commit suas mudanças (`git commit -am 'Adiciona nova feature'`)
+4. Push para a branch (`git push origin feature/nova-feature`)
+5. Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
