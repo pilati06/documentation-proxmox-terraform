@@ -222,6 +222,7 @@ Exemplo de resposta:
 ```
 
 ### Campos da Response
+
 | Campo | Descrição | Tipo |
 |-------|-----------|------|
 | `id` | ID único do ticket | Integer |
@@ -240,7 +241,7 @@ Exemplo de resposta:
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
 | GET | `/labvirtual/tasks/approved` | Buscar tickets aprovados |
-| POST | `https://apex.oracle.com/pls/apex/pilati/labvirtual/sendmail` | Atualizar status da VM |
+| POST | `/labvirtual/sendmail` | Atualizar status da VM |
 
 Enviar post com o seguinte corpo:
 
