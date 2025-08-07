@@ -1,4 +1,4 @@
-# Lab Virtual - Automated VM Provisioning System
+# Lab Virtual - Sistema de Provisionamento Automático de VMs
 
 Sistema automatizado para provisionamento de máquinas virtuais através de tickets de solicitação com aprovação e expiração automática.
 
