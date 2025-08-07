@@ -91,6 +91,7 @@ qm set 9001 --agent enabled=1
 
 # Expandir disco (opcional)
 qm disk resize 9001 scsi0 +4G
+```
 
 #### Verificação do Sistema
 ```bash
