@@ -107,6 +107,12 @@ qm set 100 --cpu=kvm64
 #### Instalação
 Seguir as instruções oficiais: https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli
 
+Para utilizar o terraform é aconselhavel gerar um token de api no proxmox, este tutorial define os passo para gerar: [https://www.youtube.com/watch?v=1kFBk0ePtxo](https://www.youtube.com/watch?v=1kFBk0ePtxo)
+
+As seguintes permissões devem ser habilitadas para o token:
+
+<img width="299" height="615" alt="Captura de tela 2025-07-23 171517" src="https://github.com/user-attachments/assets/0954dfaf-6f8f-4e9f-a0d4-cdaf21522001" />
+
 #### Configuração dos Templates
 
 Consultar o padrão no repositório - **Terraform Templates**: Configurações de infraestrutura ([pilati06/terraform](https://github.com/pilati06/terraform))
